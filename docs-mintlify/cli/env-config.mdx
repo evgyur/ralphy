@@ -3,26 +3,29 @@ title: "Env and config"
 description: "Required env vars, .env precedence, the global config file, and the ralphy config verb."
 ---
 
-`ralphy` reads two API keys, a handful of optional environment overrides, the project's `.env`, and a per-workspace JSON config. The precedence is fixed and documented here so a missing key in CI never silently picks up a different value than you expected.
+`ralphy` reads provider keys, a handful of optional environment overrides, the project's `.env`, and a per-workspace JSON config. The precedence is fixed and documented here so a missing key in CI never silently picks up a different value than you expected.
 
 ## Required env vars
 
-Two keys gate every meaningful operation:
+The core local setup is Codex OAuth plus ElevenLabs:
 
-<ParamField path="OPENROUTER_API_KEY" type="string" required>
-  OpenRouter API key for every LLM + media model call. Get one at [openrouter.ai/keys](https://openrouter.ai/keys). `ralphy setup` pings the key against `GET /api/v1/auth/key` to verify.
+<ParamField path="CODEX_HOME" type="string" required>
+  Local Codex auth directory. Ralphy reads `~/.codex/auth.json` by default and uses that login for GPT-5.5 text/vision and GPT Image 2 image generation.
 </ParamField>
 
 <ParamField path="ELEVENLABS_API_KEY" type="string" required>
   ElevenLabs API key for voiceover, music, and SFX generation, plus the Scribe transcription default. Get one at [elevenlabs.io/app/settings/api-keys](https://elevenlabs.io/app/settings/api-keys). `ralphy setup` pings against `GET /v1/user`.
 </ParamField>
 
-Both are required for a green `ralphy doctor`. The CLI raises `E_ENV_KEY_MISSING` (exit 4) the first time it needs a missing key.
+`OPENAI_API_KEY`, `GROQ_API_KEY`, and `OPENROUTER_API_KEY` are optional fallbacks/specialized providers. The CLI raises `E_ENV_KEY_MISSING` (exit 4) the first time it needs a missing key.
 
 ## Optional env overrides
 
 | Var | What it controls | Default |
 |---|---|---|
+| `OPENAI_API_KEY` | Optional direct OpenAI fallback for text/image when Codex OAuth is unavailable. | unset |
+| `GROQ_API_KEY` | Optional fast Whisper transcription through the `groq` backend. | unset |
+| `OPENROUTER_API_KEY` | Optional video/fallback providers and legacy OpenRouter transcription. | unset |
 | `RALPHY_PROJECT_DIR` | Override project auto-detection — point at a specific checkout. | (auto-detected) |
 | `RALPHY_HOME` | Root for `~/.ralphy/` — projects from `ralphy new`, global config. | `$HOME/.ralphy` |
 | `RALPHY_REPO_ROOT` | Repo root for `ralphy skill new` and other scaffold verbs. | `process.cwd()` |
@@ -49,6 +52,8 @@ Order of precedence, lowest to highest:
 A typical `.env`:
 
 ```bash
+OPENAI_API_KEY=
+GROQ_API_KEY=gsk-...
 OPENROUTER_API_KEY=sk-or-...
 ELEVENLABS_API_KEY=xi-...
 OPENROUTER_REFERER=https://yourdomain.example

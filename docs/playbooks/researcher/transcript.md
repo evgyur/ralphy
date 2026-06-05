@@ -7,7 +7,7 @@ Researcher transcribes when needed for analysis (find-viral-moments, deep social
 For project context (output goes into `workspace/projects/<id>/captions.json` + manifest + gen-log):
 
 ```bash
-ralphy project transcribe <id> --audio <path> [--language ru|en|auto] [--backend elevenlabs|openrouter|gemini]
+ralphy project transcribe <id> --audio <path> [--language ru|en|auto] [--backend elevenlabs|groq|openrouter|gemini]
 ```
 
 For research context (no project, just dump captions next to the ref):
@@ -24,7 +24,8 @@ ralphy ref transcribe <slug> [--language ru] [--backend elevenlabs]
 | backend       | word-level | key needed              | notes                                      |
 |---|---|---|---|
 | `elevenlabs`  | yes        | `ELEVENLABS_API_KEY`    | **default** — reliable, ~$0.004 / min     |
-| `openrouter`  | yes        | `OPENROUTER_API_KEY`    | whisper-1; sometimes returns 400          |
+| `groq`        | yes        | `GROQ_API_KEY`          | whisper-large-v3-turbo; fast, ~$0.00067 / min |
+| `openrouter`  | yes        | `OPENROUTER_API_KEY`    | legacy whisper-1 fallback; sometimes returns 400 |
 | `gemini`      | no         | `OPENROUTER_API_KEY`    | single-segment fallback; for short clips  |
 
 ## Hard limits

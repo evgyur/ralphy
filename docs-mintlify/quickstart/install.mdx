@@ -22,10 +22,10 @@ Claude does the rest:
 1. Runs `which bun`, `which ffmpeg`, `which ralphy`. Tells you what's missing.
 2. Installs `bun` and/or `ffmpeg` for you (interactive — you confirm each step).
 3. Drops the `ralphy` binary onto your `PATH` if it isn't there yet.
-4. Runs `ralphy setup` for the two API keys. You paste each one; the wizard pings the provider to verify before saving.
+4. Runs `ralphy setup` for provider keys. You paste each one; the wizard pings the provider to verify before saving.
 5. Runs `ralphy doctor` one last time. Greens across the board means you're ready.
 
-The whole thing takes 3-5 minutes on a clean machine, most of it spent grabbing OpenRouter and ElevenLabs keys.
+The whole thing takes 3-5 minutes on a clean machine, most of it spent grabbing provider keys.
 
 <Note>
 You need Claude Code on your machine for this path. Install it from [claude.com/claude-code](https://claude.com/claude-code) — free for personal use. Cursor, Copilot, and Codex work too once Ralphy is set up; see [Connect your editor](/quickstart/connect-editor).
@@ -36,10 +36,12 @@ You need Claude Code on your machine for this path. Install it from [claude.com/
 - **`git`** — to clone the repo.
 - **Claude Code** (or another supported editor — see [Connect your editor](/quickstart/connect-editor)).
 - **`bun` and `ffmpeg`** on the host. Claude will install them if missing.
-- **An [OpenRouter](https://openrouter.ai/keys) key** — covers image, video, LLM, vision, transcription.
-- **An [ElevenLabs](https://elevenlabs.io/app/settings/api-keys) key** — covers voiceover and music.
+- **Codex OAuth** — covers GPT-5.5 text/vision and GPT Image 2 image generation.
+- **An [ElevenLabs](https://elevenlabs.io/app/settings/api-keys) key** — covers voiceover, music, SFX, and the default Scribe captions backend.
+- **An optional [Groq](https://console.groq.com/keys) key** — covers fast Whisper transcription (`--backend groq`).
+- **An optional [OpenRouter](https://openrouter.ai/keys) key** — covers video and fallback providers.
 
-You don't need Vercel, FAL, or OpenAI direct. Two keys, one repo, one chat.
+You don't need Vercel, FAL, or OpenAI direct. Codex login plus the provider keys you use is enough.
 
 ## Verify
 
@@ -59,7 +61,8 @@ ralphy doctor -p
    ✓ ffmpeg
 
    API keys
-   ✓ OPENROUTER_API_KEY        OpenRouter
+   ✓ CODEX_HOME                Codex OAuth
+   ✓ GROQ_API_KEY              Groq Whisper
    ✓ ELEVENLABS_API_KEY        ElevenLabs
 
    ✓ ready
@@ -117,12 +120,13 @@ For CI or scripts, drive setup non-interactively:
 
 ```bash
 ralphy setup -y \
+  --groq-key gsk-... \
   --openrouter-key sk-or-... \
   --elevenlabs-key xi-... \
   --project-dir ~/code/ugc-cli
 ```
 
-Or pipe a key from stdin: `cat key.txt | ralphy setup -y --openrouter-key -`.
+Or pipe a key from stdin: `cat key.txt | ralphy setup -y --groq-key -`.
 
 <Tip>
 Prefer `direnv`? After `ralphy setup` writes `.env`, add an `.envrc` alongside it with `dotenv` so the keys load on `cd`. Ralphy reads from process env; either source works.
@@ -144,4 +148,4 @@ Drop your first brief into chat — head to [Your first video](/quickstart/first
 - [Connect your editor](/quickstart/connect-editor) — wire Cursor, Copilot, or Codex if you don't use Claude Code
 - [setup &amp; doctor reference](/cli/setup-doctor) — every flag and edge case
 - [Install playbook](https://github.com/alecs5am/ralphy/blob/main/docs/playbooks/ralphy-install.md) — canonical source
-- [OpenRouter keys](https://openrouter.ai/keys) and [ElevenLabs keys](https://elevenlabs.io/app/settings/api-keys)
+- [Groq keys](https://console.groq.com/keys), [OpenRouter keys](https://openrouter.ai/keys), and [ElevenLabs keys](https://elevenlabs.io/app/settings/api-keys)

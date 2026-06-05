@@ -1,6 +1,7 @@
 // Setup wizard — `ralphy setup`.
 //
-// v2: prompts for two keys only — OPENROUTER_API_KEY + ELEVENLABS_API_KEY —
+// Prompts for core keys — ELEVENLABS_API_KEY plus optional OpenAI/OpenRouter/Groq
+// fallback keys. Codex OAuth is picked up from ~/.codex/auth.json.
 // pings each via API verify. Does NOT auto-launch Studio or dashboard
 // (AGENTS.md hard rule #5). Re-runnable safely.
 //
@@ -15,7 +16,7 @@
 //
 // Non-interactive examples (Claude Code in a terminal):
 //   ralphy setup -y --keys-from-env
-//   ralphy setup -y --openrouter-key sk-or-... --elevenlabs-key xi-...
+//   ralphy setup -y --openai-key sk-... --elevenlabs-key xi-...
 //   cat key.txt | ralphy setup -y --openrouter-key -
 //   ralphy setup -y --project-dir /path/to/ugc-cli --no-verify
 
@@ -43,6 +44,8 @@ type SetupOpts = {
   nonInteractive?: boolean;
   yes?: boolean;
   openrouterKey?: string;
+  openaiKey?: string;
+  groqKey?: string;
   elevenlabsKey?: string;
   keysFromEnv?: boolean;
   projectDir?: string;
@@ -63,8 +66,16 @@ export function setupCmd() {
     )
     .option("-y, --yes", "Alias for --non-interactive", false)
     .option(
+      "--openai-key <key>",
+      "Set OPENAI_API_KEY (use `-` to read from stdin). Implies --non-interactive",
+    )
+    .option(
       "--openrouter-key <key>",
-      "Set OPENROUTER_API_KEY (use `-` to read from stdin). Implies --non-interactive",
+      "Set OPENROUTER_API_KEY for video/fallback providers (use `-` to read from stdin). Implies --non-interactive",
+    )
+    .option(
+      "--groq-key <key>",
+      "Set GROQ_API_KEY for Whisper transcription (use `-` to read from stdin). Implies --non-interactive",
     )
     .option(
       "--elevenlabs-key <key>",
@@ -72,7 +83,7 @@ export function setupCmd() {
     )
     .option(
       "--keys-from-env",
-      "Pick up OPENROUTER_API_KEY / ELEVENLABS_API_KEY from the current process env. Implies --non-interactive",
+      "Pick up OPENAI_API_KEY / OPENROUTER_API_KEY / GROQ_API_KEY / ELEVENLABS_API_KEY from the current process env. Implies --non-interactive",
       false,
     )
     .option(
@@ -129,7 +140,9 @@ export function setupCmd() {
       const niTriggers =
         opts.nonInteractive ||
         opts.yes ||
+        opts.openaiKey != null ||
         opts.openrouterKey != null ||
+        opts.groqKey != null ||
         opts.elevenlabsKey != null ||
         opts.keysFromEnv ||
         opts.projectDir != null;
@@ -199,6 +212,10 @@ async function runNonInteractive(opts: SetupOpts): Promise<void> {
   try {
     const orKey = await resolveKeyFlag(opts.openrouterKey, "OPENROUTER_API_KEY");
     if (orKey) provided.OPENROUTER_API_KEY = orKey;
+    const openaiKey = await resolveKeyFlag(opts.openaiKey, "OPENAI_API_KEY");
+    if (openaiKey) provided.OPENAI_API_KEY = openaiKey;
+    const groqKey = await resolveKeyFlag(opts.groqKey, "GROQ_API_KEY");
+    if (groqKey) provided.GROQ_API_KEY = groqKey;
     const elKey = await resolveKeyFlag(opts.elevenlabsKey, "ELEVENLABS_API_KEY");
     if (elKey) provided.ELEVENLABS_API_KEY = elKey;
   } catch (e) {
@@ -208,7 +225,7 @@ async function runNonInteractive(opts: SetupOpts): Promise<void> {
   }
 
   if (opts.keysFromEnv) {
-    for (const cap of CAPABILITIES) {
+    for (const cap of CAPABILITIES.filter((c) => c.configuredBySetup !== false)) {
       if (provided[cap.envVar]) continue; // explicit flag wins
       const v = process.env[cap.envVar];
       if (v) provided[cap.envVar] = v;
@@ -220,7 +237,7 @@ async function runNonInteractive(opts: SetupOpts): Promise<void> {
   const updates: Record<string, string> = {};
   let verifyFailureFatal = false;
 
-  for (const cap of CAPABILITIES) {
+  for (const cap of CAPABILITIES.filter((c) => c.configuredBySetup !== false)) {
     const value = provided[cap.envVar];
     if (!value) continue;
 
@@ -339,7 +356,7 @@ async function runWizard(): Promise<void> {
   const envPath = path.join(projectRoot, ".env");
   const existing = await readDotenv(envPath);
 
-  const keyed: Capability[] = CAPABILITIES;
+  const keyed: Capability[] = CAPABILITIES.filter((c) => c.configuredBySetup !== false);
   const statusLines = keyed.map((c) => {
     const set = Boolean(existing[c.envVar]);
     const tag = set ? "[ ✓ set    ]" : c.required ? "[ • needed ]" : "[ optional ]";
@@ -465,6 +482,20 @@ async function verifyKey(envVar: string, value: string): Promise<boolean> {
       }
       case "OPENROUTER_API_KEY": {
         const r = await fetch("https://openrouter.ai/api/v1/auth/key", {
+          headers: { Authorization: `Bearer ${value}` },
+          signal: ctrl,
+        });
+        return r.ok;
+      }
+      case "OPENAI_API_KEY": {
+        const r = await fetch("https://api.openai.com/v1/models/gpt-5.5", {
+          headers: { Authorization: `Bearer ${value}` },
+          signal: ctrl,
+        });
+        return r.ok;
+      }
+      case "GROQ_API_KEY": {
+        const r = await fetch("https://api.groq.com/openai/v1/models/whisper-large-v3-turbo", {
           headers: { Authorization: `Bearer ${value}` },
           signal: ctrl,
         });

@@ -376,13 +376,13 @@ export function generateCmd() {
   // ── image ───────────────────────────────────────────────────────────────
   const imageCmd = cmd
     .command("image")
-    .description("Generate one image via OpenRouter (default: google/gemini-3-pro-image-preview — nano-banana-pro, multi-ref consistency, ≥4 concurrent). Pass --model openai/gpt-5.4-image-2 when label typography matters more than ref consistency.")
+    .description("Generate one image (default provider: Codex OAuth when logged in; default model: gpt-image-2). Pass --provider openai or openrouter to force a fallback provider.")
     .requiredOption("--project <id>", "Project ID")
     .option("--slot <slot>", "Asset slot id (e.g. scene-01-bg-image). Required unless --batch <jsonl> is passed (the jsonl carries per-line slots).")
     .option("--prompt <prompt>", "Text prompt — see docs/prompts/image/ for mode-specific master templates")
     .option("--prompt-file <path>", "Read the prompt from a file (#025). Symmetric with --prompt; inline wins when both are passed. Path resolves project-relative when --project is set.")
-    .option("--model <model>", "OpenRouter model id (default google/gemini-3-pro-image-preview, the nano-banana-pro lineage; switch to openai/gpt-5.4-image-2 for premium typography on labels)", "google/gemini-3-pro-image-preview")
-    .option("--provider <id>", "Provider connector to use (e.g. openrouter). Default: first available provider that supports image. See `ralphy provider list`.")
+    .option("--model <model>", "Image model id (default gpt-image-2; use google/gemini-3-pro-image-preview with --provider openrouter for Gemini multi-ref)", "gpt-image-2")
+    .option("--provider <id>", "Provider connector to use (e.g. openai, openrouter). Default: first available provider that supports image. See `ralphy provider list`.")
     .option(
       "--ref <ref...>",
       "Reference image(s) for multi-ref consistency. URL / local path / data: URI; local paths auto-converted to data: URI. Path-only refs resolve cwd-first, then `workspace/projects/<id>/` and `workspace/projects/<id>/refs/` (#025). NBSP / zero-width whitespace in macOS screenshot paths is auto-normalized with a stderr warning.",
@@ -398,7 +398,7 @@ export function generateCmd() {
     )
     .option(
       "--aspect <aspect>",
-      "Aspect-ratio alias (9:16 | 16:9 | 1:1 | 3:4 | 4:3 | 2:3 | 3:2). Resolves to the chosen model's natural pixel grid (e.g. 9:16 on gpt-5.4-image-2 → 1024x1536, on gemini-3-pro-image-preview → 768x1376). Wins over --size when both are passed. #051",
+      "Aspect-ratio alias (9:16 | 16:9 | 1:1 | 3:4 | 4:3 | 2:3 | 3:2). Resolves to the chosen model's natural pixel grid (e.g. 9:16 on gpt-image-2 → 1024x1536, on gemini-3-pro-image-preview → 768x1376). Wins over --size when both are passed. #051",
     )
     .option("--negative <prompt>", "Negative prompt")
     .option("--note <note>", "Free-form note for generations.jsonl")
@@ -414,7 +414,7 @@ export function generateCmd() {
       await maybeLogNoRefConsent(opts);
       if (maybeEnqueue(opts, "generate.image", opts.project)) return;
 
-      const resolvedDefaultModel = resolveModelAlias(opts.model) ?? "google/gemini-3-pro-image-preview";
+      const resolvedDefaultModel = resolveModelAlias(opts.model) ?? "gpt-image-2";
       const resolvedSize = resolveImageSize({ model: resolvedDefaultModel, size: opts.size, aspect: opts.aspect });
       const variants = opts.variants ?? 1;
 
@@ -621,8 +621,8 @@ export function generateCmd() {
     .description("Fan out N image gens from a directory of `*.txt` prompt files (each file → one slot named by stem). Shares --model / --ref / --size across the batch; respects #007 per-endpoint concurrency. #024")
     .requiredOption("--project <id>", "Project ID")
     .requiredOption("--prompts-dir <dir>", "Directory containing `*.txt` prompt files. Each file → one slot named by stem (e.g. `scene-01.txt` → slot `scene-01`).")
-    .option("--model <model>", "OpenRouter model id (default google/gemini-3-pro-image-preview)", "google/gemini-3-pro-image-preview")
-    .option("--provider <id>", "Provider connector to use (e.g. openrouter). Default: first available provider that supports image.")
+    .option("--model <model>", "Image model id (default gpt-image-2)", "gpt-image-2")
+    .option("--provider <id>", "Provider connector to use (e.g. openai, openrouter). Default: first available provider that supports image.")
     .option(
       "--ref <ref...>",
       "Reference image(s) shared by every item in the batch. Same path resolution as `generate image --ref` (#025).",
@@ -666,7 +666,7 @@ export function generateCmd() {
         });
       }
 
-      const resolvedModel = resolveModelAlias(opts.model) ?? "google/gemini-3-pro-image-preview";
+      const resolvedModel = resolveModelAlias(opts.model) ?? "gpt-image-2";
       const resolvedSize = resolveImageSize({ model: resolvedModel, size: opts.size, aspect: opts.aspect });
       const sharedRefs = await readRefsOrFile({
         refs: opts.ref,
@@ -1282,7 +1282,7 @@ export function generateCmd() {
       (v) => Math.max(0, Math.min(1, parseFloat(v))),
       0.6,
     )
-    .option("--backend <backend>", "elevenlabs | openrouter | gemini", "elevenlabs")
+    .option("--backend <backend>", "elevenlabs | groq | openrouter | gemini", "elevenlabs")
     .option("--output <path>", "Custom output path. Default: workspace/projects/<id>/assets/captions/<slot>.json. Legacy default (captions.json at project root) is still written when --legacy-output is passed for back-compat.")
     .option("--out <path>", "Alias for --output (kept because the 'Did you mean ...' hint used to advertise this spelling). #010")
     .option("--legacy-output", "Write to the legacy shared captions.json instead of assets/captions/<slot>.json. Pre-2026-05 behavior; only use for scripts that grep the old path. Emits a deprecation warning. #010")
@@ -1432,7 +1432,7 @@ export function generateCmd() {
       );
 
       await logGeneration(opts.project, {
-        provider: result.backend === "elevenlabs" ? "elevenlabs" : "openrouter",
+        provider: result.backend,
         model: result.model,
         endpoint: result.model,
         kind: "text",

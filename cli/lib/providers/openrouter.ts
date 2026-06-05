@@ -7,7 +7,7 @@
 // hardcoded capability id — so the call path doesn't know or care that this is
 // the "default" provider.
 //
-// **No FAL_KEY, no direct openai.com, no Vercel.** See AGENTS.md invariant #1.
+// **No FAL_KEY, no Vercel.** Direct OpenAI calls live in openai.ts only.
 
 import path from "node:path";
 import fs from "node:fs/promises";
@@ -70,6 +70,15 @@ function sizeToAspectRatio(size: string): string | undefined {
 type AspectKey = "1:1" | "2:3" | "3:2" | "3:4" | "4:3" | "4:5" | "5:4" | "9:16" | "16:9" | "21:9";
 type NaturalSizeTable = Partial<Record<AspectKey, string>>;
 const NATURAL_SIZE_BY_MODEL: Record<string, NaturalSizeTable> = {
+  "gpt-image-2": {
+    "1:1": "1024x1024",
+    "9:16": "1024x1536",
+    "16:9": "1536x1024",
+    "2:3": "1024x1536",
+    "3:2": "1536x1024",
+    "3:4": "1024x1536",
+    "4:3": "1536x1024",
+  },
   // gpt-5.4-image-2: hard-snaps to a fixed pixel grid per aspect. Numbers from
   // OpenAI's gpt-image-1 docs (which gpt-5.4 inherits).
   "openai/gpt-5.4-image-2": {

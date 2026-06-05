@@ -18,7 +18,7 @@ ralphy ref pull <url> [--slug <name>] [--audio-only] [--meta-only]
 ralphy ref frames <slug> [--max 12] [--fps 0.16] [--width 540]
 
 # Transcribe the ref's audio → transcript.json (Caption[]). Default backend ElevenLabs Scribe v1.
-ralphy ref transcribe <slug> [--language ru|en|auto] [--backend elevenlabs|openrouter|gemini]
+ralphy ref transcribe <slug> [--language ru|en|auto] [--backend elevenlabs|groq|openrouter|gemini]
 
 # Vision LLM over the ref's frames → analysis.json (default prompt = UGC blueprint extractor)
 ralphy ref analyze <slug> [--prompt "..." | --prompt-file <md>] [--model <id>]
@@ -49,7 +49,7 @@ The standard chain is `pull → frames → transcribe → analyze → audio-desc
 |---|---|
 | [researcher/site-extract.md](researcher/site-extract.md) | URL is a website / landing / brand reference — Playwright extraction |
 | [researcher/social-extract.md](researcher/social-extract.md) | URL/handle is IG/TikTok/YT/X/Reddit — social video analysis or trend scrape |
-| [researcher/transcript.md](researcher/transcript.md) | Video has speech and you need the words — whisper-1 via OpenRouter |
+| [researcher/transcript.md](researcher/transcript.md) | Video has speech and you need the words — Scribe by default, Groq Whisper when requested |
 | [researcher/viral-moments.md](researcher/viral-moments.md) | Long-form video → 15-60s clips with hooks |
 | [researcher/yt-dlp.md](researcher/yt-dlp.md) | Need to download a video file from a URL (TikTok/YT/IG/etc.) — **read before reaching for WebFetch** |
 

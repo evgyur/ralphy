@@ -38,12 +38,14 @@ The agent reads sections out of order. Each section must be self-contained.
 
 ## The opening contract
 
-The file's opener pins the two-key rule and points at the freshness gate:
+The file's opener pins the provider contract and points at the freshness gate:
 
 ```markdown
-A short, opinionated list of the models we actually use. **Two API keys only:**
-`OPENROUTER_API_KEY` for media / LLM / transcription, `ELEVENLABS_API_KEY` for voice
-and music. Everything else is out of scope.
+A short, opinionated list of the models we actually use. Codex OAuth is the
+default text/image path, `ELEVENLABS_API_KEY` covers voice/music/SFX and Scribe
+captions, `GROQ_API_KEY` covers fast Whisper transcription, and
+`OPENROUTER_API_KEY` is optional for video/fallback providers. Everything else
+is out of scope.
 
 > **Last reviewed: 2026-05-08.** If this file is older than 30 days, re-check the
 > models on OpenRouter — versions drift silently.

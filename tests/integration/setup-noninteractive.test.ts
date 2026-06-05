@@ -3,7 +3,7 @@
 // output contract that an AI agent in a terminal will actually see.
 //
 // We pass --project-dir and --no-verify on every invocation so the test
-// stays offline and never touches OpenRouter / ElevenLabs. We also point
+// stays offline and never touches OpenAI / OpenRouter / Groq / ElevenLabs. We also point
 // HOME at a tmp dir so the global config write at ~/.config/ralphy/
 // doesn't pollute the developer's machine.
 
@@ -31,8 +31,10 @@ function ralphy(
     env: {
       ...process.env,
       HOME: tmpHome,
-      // Strip OPENROUTER / ELEVENLABS keys from the parent so --keys-from-env
+      // Strip provider keys from the parent so --keys-from-env
       // tests can set them deterministically.
+      OPENAI_API_KEY: opts.env?.OPENAI_API_KEY ?? "",
+      GROQ_API_KEY: opts.env?.GROQ_API_KEY ?? "",
       OPENROUTER_API_KEY: opts.env?.OPENROUTER_API_KEY ?? "",
       ELEVENLABS_API_KEY: opts.env?.ELEVENLABS_API_KEY ?? "",
       ...(opts.env ?? {}),
@@ -80,6 +82,10 @@ describe("ralphy setup --non-interactive", () => {
       "--no-verify",
       "--openrouter-key",
       "sk-or-flag-test",
+      "--openai-key",
+      "sk-openai-flag-test",
+      "--groq-key",
+      "gsk-groq-flag-test",
       "--elevenlabs-key",
       "xi-flag-test",
     ]);
@@ -88,13 +94,21 @@ describe("ralphy setup --non-interactive", () => {
     expect(r.json.mode).toBe("non-interactive");
     expect(r.json.project_dir).toBe(projectDir);
     expect(r.json.project_link_changed).toBe(true);
+    const openaiRow = r.json.keys.find((k: any) => k.envVar === "OPENAI_API_KEY");
+    const groqRow = r.json.keys.find((k: any) => k.envVar === "GROQ_API_KEY");
     const orRow = r.json.keys.find((k: any) => k.envVar === "OPENROUTER_API_KEY");
     const elRow = r.json.keys.find((k: any) => k.envVar === "ELEVENLABS_API_KEY");
+    expect(openaiRow.saved).toBe(true);
+    expect(openaiRow.verified).toBeNull();
+    expect(groqRow.saved).toBe(true);
+    expect(groqRow.verified).toBeNull();
     expect(orRow.saved).toBe(true);
     expect(orRow.verified).toBeNull();
     expect(elRow.saved).toBe(true);
 
     const env = fs.readFileSync(path.join(projectDir, ".env"), "utf8");
+    expect(env).toContain("OPENAI_API_KEY=sk-openai-flag-test");
+    expect(env).toContain("GROQ_API_KEY=gsk-groq-flag-test");
     expect(env).toContain("OPENROUTER_API_KEY=sk-or-flag-test");
     expect(env).toContain("ELEVENLABS_API_KEY=xi-flag-test");
   });
@@ -119,11 +133,51 @@ describe("ralphy setup --non-interactive", () => {
     expect(env).not.toContain("ELEVENLABS_API_KEY=");
   });
 
+  test("reads OPENAI_API_KEY from stdin when --openai-key=`-`", () => {
+    const r = ralphy(
+      [
+        "setup",
+        "-y",
+        "--project-dir",
+        projectDir,
+        "--no-verify",
+        "--openai-key",
+        "-",
+      ],
+      { stdin: "sk-openai-from-stdin\n" },
+    );
+    expect(r.exitCode).toBe(0);
+    const env = fs.readFileSync(path.join(projectDir, ".env"), "utf8");
+    expect(env).toContain("OPENAI_API_KEY=sk-openai-from-stdin");
+    expect(env).not.toContain("OPENROUTER_API_KEY=");
+  });
+
+  test("reads GROQ_API_KEY from stdin when --groq-key=`-`", () => {
+    const r = ralphy(
+      [
+        "setup",
+        "-y",
+        "--project-dir",
+        projectDir,
+        "--no-verify",
+        "--groq-key",
+        "-",
+      ],
+      { stdin: "gsk-groq-from-stdin\n" },
+    );
+    expect(r.exitCode).toBe(0);
+    const env = fs.readFileSync(path.join(projectDir, ".env"), "utf8");
+    expect(env).toContain("GROQ_API_KEY=gsk-groq-from-stdin");
+    expect(env).not.toContain("OPENROUTER_API_KEY=");
+  });
+
   test("--keys-from-env picks up env vars and persists them", () => {
     const r = ralphy(
       ["setup", "-y", "--project-dir", projectDir, "--no-verify", "--keys-from-env"],
       {
         env: {
+          OPENAI_API_KEY: "sk-openai-from-env",
+          GROQ_API_KEY: "gsk-groq-from-env",
           OPENROUTER_API_KEY: "sk-or-from-env",
           ELEVENLABS_API_KEY: "xi-from-env",
         },
@@ -131,6 +185,8 @@ describe("ralphy setup --non-interactive", () => {
     );
     expect(r.exitCode).toBe(0);
     const env = fs.readFileSync(path.join(projectDir, ".env"), "utf8");
+    expect(env).toContain("OPENAI_API_KEY=sk-openai-from-env");
+    expect(env).toContain("GROQ_API_KEY=gsk-groq-from-env");
     expect(env).toContain("OPENROUTER_API_KEY=sk-or-from-env");
     expect(env).toContain("ELEVENLABS_API_KEY=xi-from-env");
   });

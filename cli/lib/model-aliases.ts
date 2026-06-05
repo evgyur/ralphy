@@ -17,14 +17,14 @@
  */
 const ALIASES: Record<string, string> = {
   // ── Image models ────────────────────────────────────────────────────
-  "gpt-image": "openai/gpt-5.4-image-2",
-  "gpt-image-2": "openai/gpt-5.4-image-2",
-  "gpt image 2": "openai/gpt-5.4-image-2",
-  "gpt-5-image-2": "openai/gpt-5.4-image-2",
-  "gpt5image": "openai/gpt-5.4-image-2",
-  "gpt5-image2": "openai/gpt-5.4-image-2",
-  "gpt-image-mini": "openai/gpt-5-image-mini",
-  "gpt5-mini-image": "openai/gpt-5-image-mini",
+  "gpt-image": "gpt-image-2",
+  "gpt-image-2": "gpt-image-2",
+  "gpt image 2": "gpt-image-2",
+  "gpt-5-image-2": "gpt-image-2",
+  "gpt5image": "gpt-image-2",
+  "gpt5-image2": "gpt-image-2",
+  "gpt-image-mini": "gpt-image-1-mini",
+  "gpt5-mini-image": "gpt-image-1-mini",
 
   "banana": "google/gemini-3-pro-image-preview",
   "nano-banana": "google/gemini-3-pro-image-preview",
@@ -71,6 +71,10 @@ const ALIASES: Record<string, string> = {
   "gemini-flash": "google/gemini-2.5-flash",
   "gemini-3-pro": "google/gemini-3-pro-preview",
   "gemini-3.1-pro": "google/gemini-3.1-pro-preview",
+  "gpt-5.5": "gpt-5.5",
+  "gpt 5.5": "gpt-5.5",
+  "codex-gpt-5.5": "gpt-5.5",
+  "codex gpt 5.5": "gpt-5.5",
 };
 
 /**

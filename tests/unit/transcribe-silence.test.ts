@@ -11,6 +11,7 @@ import { transcribe } from "../../cli/lib/transcribe.js";
 
 const originalFetch = globalThis.fetch;
 const originalElevenKey = process.env.ELEVENLABS_API_KEY;
+const originalGroqKey = process.env.GROQ_API_KEY;
 const originalOrKey = process.env.OPENROUTER_API_KEY;
 let tmpAudio: string;
 
@@ -20,6 +21,7 @@ function mockFetch(handler: () => Response | Promise<Response>): void {
 
 beforeEach(async () => {
   process.env.ELEVENLABS_API_KEY = "test-key";
+  process.env.GROQ_API_KEY = "test-key";
   process.env.OPENROUTER_API_KEY = "test-key";
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "ralphy-silence-"));
   tmpAudio = path.join(dir, "clip.mp3");
@@ -30,6 +32,8 @@ afterEach(() => {
   globalThis.fetch = originalFetch;
   if (originalElevenKey === undefined) delete process.env.ELEVENLABS_API_KEY;
   else process.env.ELEVENLABS_API_KEY = originalElevenKey;
+  if (originalGroqKey === undefined) delete process.env.GROQ_API_KEY;
+  else process.env.GROQ_API_KEY = originalGroqKey;
   if (originalOrKey === undefined) delete process.env.OPENROUTER_API_KEY;
   else process.env.OPENROUTER_API_KEY = originalOrKey;
 });
@@ -73,6 +77,25 @@ describe("transcribe: empty transcript → []", () => {
       backend: "openrouter",
     });
     expect(r.captions).toEqual([]);
+  });
+
+  test("Groq Whisper: empty body → captions=[] (no throw)", async () => {
+    mockFetch(() =>
+      new Response(
+        JSON.stringify({
+          duration: 3,
+          // no text, no segments, no words → should mirror OpenAI-compatible Whisper behavior
+        }),
+        { status: 200 },
+      ),
+    );
+    const r = await transcribe({
+      audioPath: tmpAudio,
+      language: "en",
+      backend: "groq",
+    });
+    expect(r.captions).toEqual([]);
+    expect(r.model).toBe("whisper-large-v3-turbo");
   });
 
   test("Gemini audio: empty content → captions=[] (no throw)", async () => {

@@ -59,7 +59,7 @@ If the user asks "why did this generation fail" — `ralphy project log <id> --t
 
 ## What I read on start
 
-- **`AGENTS.md`** — invariants (no auto-Studio, no dashboard, two keys).
+- **`AGENTS.md`** — invariants (no auto-Studio, no dashboard, provider keys).
 - `pwd` + `package.json` + `CLAUDE.md` + `MODELS.md` to confirm repo root.
 - `docs/agent-guide.md` — canonical CLI reference. I don't memorize commands; I look them up.
 - `docs/cli-spec.md` — flag-level spec.
@@ -67,7 +67,7 @@ If the user asks "why did this generation fail" — `ralphy project log <id> --t
 ## Hard rules (inherited from AGENTS.md)
 
 1. **NO auto-launch.** I don't run Studio / dashboard in the background. Ever. Chat is the UI. See [core/doctor.md](core/doctor.md).
-2. **Only two keys.** `OPENROUTER_API_KEY` + `ELEVENLABS_API_KEY`. FAL / Vercel / OpenAI / Replicate are **not needed** in v2. `ralphy doctor` checks presence.
+2. **Core auth.** `codex login` supplies GPT-5.5 + GPT Image 2 through Codex OAuth; `ELEVENLABS_API_KEY` supplies voice/music. `OPENAI_API_KEY` is only a direct API fallback, and `OPENROUTER_API_KEY` is optional for video/fallback providers. FAL / Vercel / Replicate are not needed. `ralphy doctor` checks presence.
 3. **No fal-ai MCP setup.** Removed in Sprint 2. If the user is being shown `claude mcp add fal-ai` — that's a stale instruction, ignore it.
 4. **Logs append-only.** `cli/lib/gen-log.ts` enforces the format. See [core/troubleshooting.md](core/troubleshooting.md).
 

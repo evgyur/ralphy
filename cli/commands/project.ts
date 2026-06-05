@@ -567,7 +567,7 @@ export function projectCmd() {
     .description("Transcribe an audio file → captions.json (Caption[]). Default backend: ElevenLabs Scribe v1 (word-level).")
     .requiredOption("--audio <path>", "Path to audio file (mp3/m4a/wav, ≤25MB)")
     .option("--language <lang>", "ru | en | auto", "ru")
-    .option("--backend <backend>", "elevenlabs | openrouter | gemini", "elevenlabs")
+    .option("--backend <backend>", "elevenlabs | groq | openrouter | gemini", "elevenlabs")
     .option("--model <model>", "(advanced; only honored for backend=openrouter)", DEFAULT_MODEL)
     .option("--out <path>", "Output JSON path (default: <project>/captions.json)")
     .action(async (id: string, opts: any) => {

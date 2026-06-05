@@ -1,9 +1,7 @@
 // Capability registry — maps env vars to pipeline features.
 //
-// v2: only two keys are required. OPENROUTER_API_KEY covers image / video / LLM /
-// vision / transcription. ELEVENLABS_API_KEY covers voice + music. Everything
-// else (FAL/Vercel/OpenAI/Replicate) was removed per Sprint 2 OpenRouter
-// consolidation. See AGENTS.md hard invariant #1 + MODELS.md.
+// Codex OAuth covers the default text / image path. Direct OpenAI and
+// OpenRouter remain optional fallbacks. ElevenLabs covers voice + music.
 //
 // Usage:
 //   import { requireCapability, hasCapability, getCapabilityStatus } from "./capabilities.js";
@@ -11,9 +9,16 @@
 //   requireCapability("voiceover-elevenlabs");          // throws clean error if missing
 //   if (hasCapability("llm-openrouter")) { ... }        // optional path
 
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+
 export type CapabilityId =
   | "voiceover-elevenlabs"
-  | "llm-openrouter";
+  | "llm-codex"
+  | "llm-openai"
+  | "llm-openrouter"
+  | "audio-groq";
 
 export type CapabilityCategory = "media" | "voice" | "music" | "llm";
 
@@ -26,22 +31,54 @@ export type Capability = {
   category: CapabilityCategory;
   /** Where to obtain the key — shown in setup wizard. */
   signupUrl: string;
-  /** Required for the *core* pipeline? In v2 both are required. */
-  required: true;
+  /** Required for the core text/image/audio pipeline. */
+  required: boolean;
+  /** False for keyless/local-login checks that setup should not prompt for. */
+  configuredBySetup?: boolean;
 };
 
 export const CAPABILITIES: Capability[] = [
   {
+    id: "llm-codex",
+    label: "Codex OAuth",
+    description:
+      "Local Codex ChatGPT login — covers GPT-5.5 text/vision work and GPT Image 2 image generation without an OpenAI API key.",
+    envVar: "CODEX_HOME",
+    category: "llm",
+    signupUrl: "https://developers.openai.com/codex/cli/",
+    required: true,
+    configuredBySetup: false,
+  },
+  {
+    id: "llm-openai",
+    label: "OpenAI",
+    description:
+      "Optional direct OpenAI key fallback — covers GPT-5.5 text/vision work and GPT Image 2 image generation.",
+    envVar: "OPENAI_API_KEY",
+    category: "llm",
+    signupUrl: "https://platform.openai.com/api-keys",
+    required: false,
+  },
+  {
     id: "llm-openrouter",
     label: "OpenRouter",
     description:
-      "Unified key — covers image generation (gemini-3-pro-image-preview, gpt-5.4-image-2), " +
-      "video (kling-v3.0-pro, veo-3.1, seedance-2.0), LLM/vision (gemini, claude, gpt), " +
-      "and transcription (whisper-1).",
+      "Optional fallback key — covers video generation (kling-v3.0-pro, veo-3.1, seedance-2.0), " +
+      "Gemini/OpenRouter image models, fallback LLM/vision, and legacy whisper-1 transcription.",
     envVar: "OPENROUTER_API_KEY",
     category: "llm",
     signupUrl: "https://openrouter.ai/keys",
-    required: true,
+    required: false,
+  },
+  {
+    id: "audio-groq",
+    label: "Groq Whisper",
+    description:
+      "Optional fast Whisper transcription via Groq (`whisper-large-v3-turbo`) for the `groq` captions backend.",
+    envVar: "GROQ_API_KEY",
+    category: "voice",
+    signupUrl: "https://console.groq.com/keys",
+    required: false,
   },
   {
     id: "voiceover-elevenlabs",
@@ -59,6 +96,17 @@ export const CAPABILITIES: Capability[] = [
 export function hasCapability(id: CapabilityId): boolean {
   const cap = CAPABILITIES.find((c) => c.id === id);
   if (!cap) return false;
+  if (id === "llm-codex") {
+    try {
+      const authPath = path.join(process.env.CODEX_HOME || path.join(os.homedir(), ".codex"), "auth.json");
+      const raw = JSON.parse(fs.readFileSync(authPath, "utf8")) as {
+        tokens?: { access_token?: string; account_id?: string };
+      };
+      return Boolean(raw.tokens?.access_token && raw.tokens?.account_id);
+    } catch {
+      return false;
+    }
+  }
   return Boolean(process.env[cap.envVar]);
 }
 

@@ -417,7 +417,7 @@ export function refCmd() {
     .command("transcribe <slug>")
     .description("Transcribe <slug>/source.mp3 → <slug>/transcript.json (Caption[]). Default backend: ElevenLabs Scribe v1.")
     .option("--language <lang>", "ru | en | auto", "ru")
-    .option("--backend <backend>", "elevenlabs | openrouter | gemini", "elevenlabs")
+    .option("--backend <backend>", "elevenlabs | groq | openrouter | gemini", "elevenlabs")
     .action(async (slug: string, opts: any) => {
       try {
         const r = await transcribeRef({
@@ -436,7 +436,7 @@ export function refCmd() {
           costUsd: r.costUsd,
         });
       } catch (e: any) {
-        raiseError("E_PROVIDER_HTTP", { provider: "ElevenLabs/OpenRouter", status: 0, detail: e?.message ?? String(e) });
+        raiseError("E_PROVIDER_HTTP", { provider: "ElevenLabs/Groq/OpenRouter", status: 0, detail: e?.message ?? String(e) });
       }
     });
 

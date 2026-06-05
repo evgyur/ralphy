@@ -14,6 +14,9 @@
 // AND has its key set. Adding a provider = adding a file + one line here.
 
 import { raiseError } from "../errors/index.js";
+import { codexConnector } from "./codex.js";
+import { openaiConnector } from "./openai.js";
+import { groqConnector } from "./groq.js";
 import { openrouterConnector } from "./openrouter.js";
 import { elevenlabsConnector } from "./elevenlabs.js";
 import type {
@@ -25,9 +28,17 @@ import type {
 
 export type { Capability, RalphyConnector } from "./types.js";
 
-// Registration order = priority for "first available wins". OpenRouter first
-// because it fills the most cells; ElevenLabs owns the audio cells OR doesn't.
-const CONNECTORS: RalphyConnector[] = [openrouterConnector, elevenlabsConnector];
+// Registration order = priority for "first available wins". Codex OAuth first
+// for local ChatGPT-login text/image, direct OpenAI as API-key fallback,
+// Groq owns fast Whisper transcription, OpenRouter remains video/fallback,
+// ElevenLabs owns voice/music/sfx and the default Scribe caption path.
+const CONNECTORS: RalphyConnector[] = [
+  codexConnector,
+  openaiConnector,
+  groqConnector,
+  openrouterConnector,
+  elevenlabsConnector,
+];
 
 /** All registered connectors, in priority order. */
 export function listConnectors(): RalphyConnector[] {

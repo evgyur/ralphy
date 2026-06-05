@@ -29,7 +29,8 @@ ralphy --version
 ralphy doctor             # should fail until step 3
 
 # 3. Setup
-ralphy setup              # paste OPENROUTER_API_KEY + ELEVENLABS_API_KEY
+codex login               # enables GPT-5.5 + GPT Image 2 via Codex OAuth
+ralphy setup              # paste ELEVENLABS_API_KEY (+ OPENAI_API_KEY/OpenRouter only for fallback/video)
 ralphy doctor             # should be green now
 
 # 4. Install the skill into your AI agent

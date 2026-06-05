@@ -29,6 +29,8 @@ export type BatchItem = {
 
 /** Per-model nominal cost for image batches (kept here so dry-run and live agree). */
 const IMAGE_COST_USD: Record<string, number> = {
+  "gpt-image-2": 0.20,
+  "gpt-image-1.5": 0.12,
   "google/gemini-3-pro-image-preview": 0.04,
   "openai/gpt-5.4-image-2": 0.19,
   "google/gemini-3.1-flash-image-preview": 0.04,
@@ -40,6 +42,8 @@ const IMAGE_COST_USD_FALLBACK = 0.04;
 
 /** Per-model nominal latency seconds for image batches (rough — used for ETA only). */
 const IMAGE_LATENCY_SEC: Record<string, number> = {
+  "gpt-image-2": 28,
+  "gpt-image-1.5": 20,
   "google/gemini-3-pro-image-preview": 12,
   "openai/gpt-5.4-image-2": 28,
   "google/gemini-3.1-flash-image-preview": 8,
@@ -49,6 +53,7 @@ const IMAGE_LATENCY_SEC_FALLBACK = 15;
 
 /** Per-model in-process concurrency hint (mirrors providers/concurrency.ts). */
 const IMAGE_CONCURRENCY: Record<string, number> = {
+  "gpt-image-2": 2,
   "openai/gpt-5.4-image-2": 2,
   "google/gemini-3-pro-image-preview": 2,
 };

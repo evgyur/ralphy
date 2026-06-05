@@ -21,7 +21,7 @@ Then in chat: **"set me up"** → keys, deps, doctor. Then: **"make a 15-second 
 
 <CardGroup cols={2}>
   <Card title="Install" icon="download" href="/quickstart/install">
-    Clone the repo, open Claude Code, ask Claude to set you up. About 3-5 minutes including grabbing two API keys.
+    Clone the repo, open Claude Code, ask Claude to set you up. About 3-5 minutes including grabbing provider keys.
   </Card>
   <Card title="Your first video" icon="film" href="/quickstart/first-video">
     Type a brief in chat. Ralphy runs intake, generates scenes, renders `final.mp4`. About 8 minutes cold-start.
@@ -38,10 +38,12 @@ Then in chat: **"set me up"** → keys, deps, doctor. Then: **"make a 15-second 
 
 - A terminal on macOS or Linux. Windows works via WSL.
 - [Claude Code](https://claude.com/claude-code) on your machine (Cursor / Copilot / Codex also work — see step 3).
-- An [OpenRouter](https://openrouter.ai/keys) key — covers image, video, LLM, vision, transcription.
-- An [ElevenLabs](https://elevenlabs.io/app/settings/api-keys) key — covers voiceover and music.
+- Codex OAuth — covers GPT-5.5 text/vision and GPT Image 2 image generation.
+- An [ElevenLabs](https://elevenlabs.io/app/settings/api-keys) key — covers voiceover, music, SFX, and the default Scribe captions backend.
+- An optional [Groq](https://console.groq.com/keys) key — covers fast Whisper transcription.
+- An optional [OpenRouter](https://openrouter.ai/keys) key — covers video and fallback providers.
 
-You don't need Vercel, FAL, OpenAI direct, or any other provider. Two keys, one repo, one chat.
+You don't need Vercel, FAL, OpenAI direct, or any other provider. One repo, one chat, and only the provider keys you actually use.
 
 ## How Ralphy works in one paragraph
 

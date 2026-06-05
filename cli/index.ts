@@ -42,6 +42,7 @@ import { setupCmd } from "./commands/setup.js";
 import { statusCmd } from "./commands/status.js";
 import { generateCmd } from "./commands/generate.js";
 import { providerCmd } from "./commands/provider.js";
+import { hasCapability } from "./lib/capabilities.js";
 import { modelsCmd } from "./commands/models.js";
 import { daemonCmd } from "./commands/daemon.js";
 import { queueCmd } from "./commands/queue.js";
@@ -234,6 +235,9 @@ program.action(async () => {
             signals: profile.signals,
           },
           capabilities: {
+            codex: hasCapability("llm-codex"),
+            openai: Boolean(process.env.OPENAI_API_KEY),
+            groq: Boolean(process.env.GROQ_API_KEY),
             openrouter: Boolean(process.env.OPENROUTER_API_KEY),
             elevenlabs: Boolean(process.env.ELEVENLABS_API_KEY),
           },
@@ -252,6 +256,9 @@ program.action(async () => {
   const homeDir = process.env.HOME || "";
   const projectShort = root().startsWith(homeDir) ? "~" + root().slice(homeDir.length) : root();
   const caps = [
+    { label: "Codex OAuth", on: hasCapability("llm-codex") },
+    { label: "OpenAI", on: Boolean(process.env.OPENAI_API_KEY) },
+    { label: "Groq", on: Boolean(process.env.GROQ_API_KEY) },
     { label: "OpenRouter", on: Boolean(process.env.OPENROUTER_API_KEY) },
     { label: "ElevenLabs", on: Boolean(process.env.ELEVENLABS_API_KEY) },
   ];

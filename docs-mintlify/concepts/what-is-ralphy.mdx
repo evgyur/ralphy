@@ -27,7 +27,7 @@ Most teams shipping AI video today wire it together by hand. Ralphy collapses fo
 
 **Asset chaos.** "Where is the v2 of scene 4?" "What prompt produced this image?" "Which voiceover is the latest?" Ralphy makes these questions cheap. Every produced file is a slot in `asset-manifest.json`. Every regen is a new version (`.v2`, `.v3`, ...) — never an overwrite. Every model call lands in `generations.jsonl` with input, output, cost, latency, and status.
 
-**Provider lock-in.** Ralphy has exactly two API keys: `OPENROUTER_API_KEY` for media and LLMs, and `ELEVENLABS_API_KEY` for voiceover and music. No FAL, no Vercel, no direct OpenAI. All media goes through `cli/lib/providers/media.ts`. All LLM and vision calls go through `cli/lib/providers/llm.ts` (see AGENTS.md invariant #1). When a new model lands on OpenRouter, you point at it from `MODELS.md` and nothing else changes.
+**Provider lock-in.** Ralphy uses the local Codex OAuth login for GPT-5.5 and GPT Image 2 by default, `ELEVENLABS_API_KEY` for voiceover/music/SFX, optional `GROQ_API_KEY` for fast Whisper transcription, and optional `OPENROUTER_API_KEY` for video and fallback providers. No FAL, no Vercel. All provider calls go through `cli/lib/providers/*` (see AGENTS.md invariant #1), so adding or swapping a model is a connector/catalog change rather than a project rewrite.
 
 ## What makes it different
 

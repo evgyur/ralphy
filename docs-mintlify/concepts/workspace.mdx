@@ -120,7 +120,7 @@ Outside the repo, Ralphy keeps a small global registry:
 
 `projects.json` is how `ralphy project list` knows about projects across multiple ugc-cli checkouts. The registry stores `project-id → workspace-path` mappings. If you maintain two checkouts of the repo (e.g. one stable, one bleeding-edge), both can register projects against the same global registry, and `ralphy project show <id>` resolves to the right one.
 
-`config.json` holds the two API keys. Set them via `ralphy setup` (interactive) or by editing the file. `ralphy doctor` validates them — if a key is missing or stale, the error message names the file and the field.
+Provider keys live in the project `.env`; global config stores project links and imports. Set keys via `ralphy setup` (interactive) or by editing `.env`. `ralphy doctor` validates them — if a key is missing or stale, the error message names the field.
 
 ## Brands, personas, refs
 

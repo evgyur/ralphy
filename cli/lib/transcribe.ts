@@ -1,12 +1,12 @@
 // Multi-backend transcription. Single entry-point `transcribe()` returns
-// Caption[] in the standard caption shape (cli/lib/captions/types.ts). Three backends, all log via
+// Caption[] in the standard caption shape (cli/lib/captions/types.ts). Four backends, all log via
 // gen-log when projectId is supplied.
 //
-// Default = ElevenLabs Scribe v1 (rationale below). OpenRouter whisper-1 is
-// kept as a fallback because the audio endpoint has been returning HTTP 400
-// intermittently (see workspace transcript dated 2026-05-07). Gemini-audio
-// via OpenRouter chat-completions is opt-in for short clips when word-level
-// timing isn't required.
+// Default = ElevenLabs Scribe v1 (rationale below). Groq owns the fast Whisper
+// path. OpenRouter whisper-1 is kept as a legacy fallback because its audio
+// endpoint has returned HTTP 400 intermittently (workspace transcript,
+// 2026-05-07). Gemini-audio via OpenRouter chat-completions is opt-in for short
+// clips when word-level timing isn't required.
 //
 // Why ElevenLabs default:
 // - The user already has ELEVENLABS_API_KEY configured (subscription billing).
@@ -19,7 +19,8 @@
 //   backend       word-level   key needed              notes
 //   ----------    ----------   --------------------    --------------------
 //   elevenlabs    yes          ELEVENLABS_API_KEY      default; reliable
-//   openrouter    yes          OPENROUTER_API_KEY      whisper-1; sometimes 400
+//   groq          yes          GROQ_API_KEY            whisper-large-v3-turbo; fast
+//   openrouter    yes          OPENROUTER_API_KEY      legacy whisper-1; sometimes 400
 //   gemini        no           OPENROUTER_API_KEY      single-segment fallback
 //
 // All backends accept ≤25MB audio. Compress longer files to mono 64kbps mp3:
@@ -39,11 +40,12 @@ import { existsSync, statSync } from "node:fs";
 import type { Caption } from "./captions/types.js";
 import { callLLM } from "./providers/llm.js";
 
-export type TranscribeBackend = "elevenlabs" | "openrouter" | "gemini";
+export type TranscribeBackend = "elevenlabs" | "groq" | "openrouter" | "gemini";
 export type TranscribeLanguage = "ru" | "en" | "auto";
 
 // Kept for back-compat with consumers that imported these.
 export const WHISPER_MODEL = "openai/whisper-1";
+export const GROQ_WHISPER_MODEL = "whisper-large-v3-turbo";
 export const SCRIBE_MODEL = "elevenlabs/scribe_v1";
 export const GEMINI_AUDIO_MODEL = "google/gemini-2.5-flash";
 export const DEFAULT_MODEL = SCRIBE_MODEL;
@@ -54,6 +56,7 @@ export const DEFAULT_BACKEND: TranscribeBackend = "elevenlabs";
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 // Cost rates (best-effort; refine when providers return billed cost).
 const COST_PER_MIN_WHISPER = 0.006;       // OpenAI list price
+const COST_PER_MIN_GROQ_WHISPER = 0.04 / 60; // Groq whisper-large-v3-turbo list price ($0.04/hr)
 const COST_PER_MIN_SCRIBE = 0.004;        // ElevenLabs Scribe list price
 const COST_PER_MIN_GEMINI = 0.0;          // counted by callLLM via token billing
 
@@ -143,6 +146,8 @@ export async function transcribe(opts: TranscribeOptions): Promise<TranscribeRes
   switch (backend) {
     case "elevenlabs":
       return wrap(t0, backend, await viaElevenLabs(abs, language, opts.signal));
+    case "groq":
+      return wrap(t0, backend, await viaGroq(abs, language, opts.signal));
     case "openrouter":
       return wrap(t0, backend, await viaOpenRouter(abs, language, opts.signal));
     case "gemini":
@@ -178,9 +183,10 @@ function scribeWordConfidence(w: ScribeWord): number | null {
 
 function pickBackend(): TranscribeBackend {
   if (process.env.ELEVENLABS_API_KEY) return "elevenlabs";
+  if (process.env.GROQ_API_KEY) return "groq";
   if (process.env.OPENROUTER_API_KEY) return "openrouter";
   throw new Error(
-    "Neither ELEVENLABS_API_KEY nor OPENROUTER_API_KEY is set. Run `ralphy setup`.",
+    "None of ELEVENLABS_API_KEY, GROQ_API_KEY, or OPENROUTER_API_KEY is set. Run `ralphy setup`.",
   );
 }
 
@@ -324,6 +330,90 @@ type WhisperResponse = {
   segments?: Array<{ start: number; end: number; text: string }>;
 };
 
+async function viaGroq(
+  abs: string,
+  language: TranscribeLanguage,
+  signal?: AbortSignal,
+): Promise<Omit<TranscribeResult, "durationMs" | "backend">> {
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) throw new Error("GROQ_API_KEY not set. Run `ralphy setup`.");
+
+  const bytes = await fs.readFile(abs);
+  const form = new FormData();
+  form.append("file", new Blob([bytes]), path.basename(abs));
+  form.append("model", GROQ_WHISPER_MODEL);
+  if (language !== "auto") form.append("language", language);
+  form.append("response_format", "verbose_json");
+  form.append("timestamp_granularities[]", "word");
+  form.append("temperature", "0");
+
+  const resp = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}` },
+    body: form,
+    signal,
+  });
+
+  if (!resp.ok) {
+    const body = await resp.text().catch(() => "");
+    throw new Error(`Groq Whisper ${resp.status}: ${body.slice(0, 500)}`);
+  }
+  const json = (await resp.json()) as WhisperResponse;
+  const parsed = whisperToCaptions(json);
+  const audioDurationSec = json.duration ?? 0;
+
+  return {
+    captions: parsed,
+    language: json.language ?? language,
+    languageProbability: null,
+    lowConfidenceWords: [],
+    model: GROQ_WHISPER_MODEL,
+    audioDurationSec,
+    costUsd: (audioDurationSec / 60) * COST_PER_MIN_GROQ_WHISPER,
+  };
+}
+
+function whisperToCaptions(json: WhisperResponse): Caption[] {
+  if (json.words && json.words.length > 0) {
+    return json.words.map((w) => {
+      const startMs = Math.round(w.start * 1000);
+      const endMs = Math.round(w.end * 1000);
+      return {
+        text: w.word,
+        startMs,
+        endMs,
+        timestampMs: Math.round((startMs + endMs) / 2),
+        confidence: null,
+      };
+    });
+  }
+  if (json.segments && json.segments.length > 0) {
+    return json.segments.map((s) => {
+      const startMs = Math.round(s.start * 1000);
+      const endMs = Math.round(s.end * 1000);
+      return {
+        text: s.text.trim(),
+        startMs,
+        endMs,
+        timestampMs: Math.round((startMs + endMs) / 2),
+        confidence: null,
+      };
+    });
+  }
+  if (json.text) {
+    return [
+      {
+        text: json.text.trim(),
+        startMs: 0,
+        endMs: Math.round((json.duration ?? 0) * 1000),
+        timestampMs: 0,
+        confidence: null,
+      },
+    ];
+  }
+  return [];
+}
+
 async function viaOpenRouter(
   abs: string,
   language: TranscribeLanguage,
@@ -353,48 +443,11 @@ async function viaOpenRouter(
   }
   const json = (await resp.json()) as WhisperResponse;
 
-  let captions: Caption[];
-  if (json.words && json.words.length > 0) {
-    captions = json.words.map((w) => {
-      const startMs = Math.round(w.start * 1000);
-      const endMs = Math.round(w.end * 1000);
-      return {
-        text: w.word,
-        startMs,
-        endMs,
-        timestampMs: Math.round((startMs + endMs) / 2),
-        confidence: null,
-      };
-    });
-  } else if (json.segments && json.segments.length > 0) {
-    captions = json.segments.map((s) => {
-      const startMs = Math.round(s.start * 1000);
-      const endMs = Math.round(s.end * 1000);
-      return {
-        text: s.text.trim(),
-        startMs,
-        endMs,
-        timestampMs: Math.round((startMs + endMs) / 2),
-        confidence: null,
-      };
-    });
-  } else if (json.text) {
-    captions = [
-      {
-        text: json.text.trim(),
-        startMs: 0,
-        endMs: Math.round((json.duration ?? 0) * 1000),
-        timestampMs: 0,
-        confidence: null,
-      },
-    ];
-  } else {
-    // Issue #010: silent / sub-threshold audio used to throw here, breaking
-    // batch caption calls in noski-people-001 (~80 calls) + venom-bodywash-001.
-    // Return [] so the caller can decide what to do; the shared captions.json
-    // clobber that prompted the throw is also fixed (per-slot output).
-    captions = [];
-  }
+  // Issue #010: silent / sub-threshold audio used to throw here, breaking
+  // batch caption calls in noski-people-001 (~80 calls) + venom-bodywash-001.
+  // Return [] so the caller can decide what to do; the shared captions.json
+  // clobber that prompted the throw is also fixed (per-slot output).
+  const captions = whisperToCaptions(json);
 
   const audioDurationSec = json.duration ?? 0;
   const costUsd = (audioDurationSec / 60) * COST_PER_MIN_WHISPER;

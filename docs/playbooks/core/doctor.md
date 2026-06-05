@@ -68,7 +68,7 @@ ffmpeg -version 2>&1 | head -1
 ```
 - Missing → `brew install ffmpeg`
 
-### Step 4 — Two keys in .env
+### Step 4 — Auth in Codex + .env
 ```bash
 ls .env 2>/dev/null && echo "exists" || echo "missing"
 ```
@@ -78,17 +78,27 @@ If missing — create:
 ralphy setup
 ```
 
-The setup wizard prompts **only** for `OPENROUTER_API_KEY` + `ELEVENLABS_API_KEY` (see AGENTS invariant). Each is pinged via API to verify.
+Ralphy uses the local Codex OAuth login (`~/.codex/auth.json`) for GPT-5.5 and GPT Image 2 by default. The setup wizard prompts for `ELEVENLABS_API_KEY`, plus optional `OPENAI_API_KEY` and `OPENROUTER_API_KEY` fallback/video providers. API keys entered through setup are pinged to verify.
 
-#### 4a. OPENROUTER_API_KEY
+#### 4a. Codex OAuth
+
+Run `codex login`. `ralphy doctor` passes this check when `~/.codex/auth.json` contains ChatGPT auth tokens.
+
+#### 4b. OPENAI_API_KEY
+
+Optional direct OpenAI API fallback.
+
+#### 4c. OPENROUTER_API_KEY
+
+Optional video/fallback provider.
 1. https://openrouter.ai/keys → Create.
 2. Wizard saves it + pings `https://openrouter.ai/api/v1/auth/key`.
 
-#### 4b. ELEVENLABS_API_KEY
+#### 4d. ELEVENLABS_API_KEY
 1. https://elevenlabs.io/app/settings/api-keys → Create.
 2. Wizard pings `/v1/user`.
 
-If the user already has `FAL_KEY` / `VERCEL_AI_GATEWAY_KEY` / `OPENAI_API_KEY` in `.env` — leave them. The setup wizard doesn't touch them. They're unused in v2 but don't break anything.
+If the user already has `FAL_KEY` / `VERCEL_AI_GATEWAY_KEY` in `.env` — leave them. The setup wizard doesn't touch them. They're unused but don't break anything.
 
 ### Step 5 — Smoke
 ```bash

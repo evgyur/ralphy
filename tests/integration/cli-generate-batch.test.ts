@@ -64,9 +64,9 @@ describe("generate image --variants N --dry-run (#024)", () => {
     expect(r.json?.dryRun).toBe(true);
     expect(r.json?.mode).toBe("batch");
     expect(r.json?.count).toBe(3);
-    expect(r.json?.model).toBe("google/gemini-3-pro-image-preview");
-    // Three nominal gemini-3-pro-image-preview calls @ $0.04 each.
-    expect(r.json?.cost_estimate_usd).toBeCloseTo(0.12, 3);
+    expect(r.json?.model).toBe("gpt-image-2");
+    // Three nominal gpt-image-2 calls @ $0.20 each.
+    expect(r.json?.cost_estimate_usd).toBeCloseTo(0.6, 3);
     expect(r.json?.eta_seconds).toBeGreaterThan(0);
     const slots = (r.json?.items as Array<{ slot: string }>).map((it) => it.slot);
     expect(slots).toEqual(["hero-v1", "hero-v2", "hero-v3"]);
@@ -98,7 +98,7 @@ describe("generate image --batch <jsonl> --dry-run (#024)", () => {
     expect(slots.map((s) => s.slot)).toEqual(["scene-01", "scene-02", "scene-03"]);
     // Per-line --model override surfaces in the rollup.
     expect(slots[1]?.model).toBe("openai/gpt-5.4-image-2");
-    expect(slots[0]?.model).toBe("google/gemini-3-pro-image-preview");
+    expect(slots[0]?.model).toBe("gpt-image-2");
     expect(r.json?.cost_estimate_usd).toBeGreaterThan(0);
   });
 
@@ -149,8 +149,8 @@ describe("generate image-batch --prompts-dir <dir> --dry-run (#024)", () => {
     expect(r.json?.count).toBe(3);
     const slots = (r.json?.items as Array<{ slot: string }>).map((it) => it.slot);
     expect(slots).toEqual(["scene-01", "scene-02", "scene-03"]);
-    // 3 × gemini-3-pro-image-preview @ $0.04 each.
-    expect(r.json?.cost_estimate_usd).toBeCloseTo(0.12, 3);
+    // 3 x gpt-image-2 @ $0.20 each.
+    expect(r.json?.cost_estimate_usd).toBeCloseTo(0.6, 3);
   });
 
   test("rejects a directory with no *.txt files", () => {

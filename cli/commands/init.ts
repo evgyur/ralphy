@@ -55,7 +55,7 @@ export function initCmd() {
       } catch {
         await fs.writeFile(
           envFile,
-          "OPENROUTER_API_KEY=\nELEVENLABS_API_KEY=\n"
+          "OPENAI_API_KEY=\nOPENROUTER_API_KEY=\nGROQ_API_KEY=\nELEVENLABS_API_KEY=\n"
         );
       }
 

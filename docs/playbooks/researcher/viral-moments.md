@@ -17,7 +17,7 @@ bunx tsx scripts/find-viral-moments.ts \
 
 ### Pipeline
 
-1. **Transcribe** via `cli/lib/transcribe.ts` → OpenRouter whisper-1 (word-level timestamps).
+1. **Transcribe** via `cli/lib/transcribe.ts` → ElevenLabs Scribe by default, or Groq Whisper (`--backend groq`) when requested.
 2. **Sample frames** every 5s (via `ffmpeg -vf fps=0.2`).
 3. **Gemini-2.5-flash via `callLLM()`** — vision over frames + full transcript. The prompt focuses on:
    - 3-15 clips, 15-60s each

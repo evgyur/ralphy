@@ -14,7 +14,8 @@
 //
 // Coverage map (see AGENTS.md `Tested by:` annotations for the inverse view):
 //
-//   #1  no FAL_KEY / Vercel / OpenAI direct       — TESTED (this file)
+//   #1  no FAL_KEY / Vercel direct; OpenAI only via provider connector
+//                                                   — TESTED (this file)
 //   #2  ralphy is the only entry-point            — partially TESTED
 //                                                   (this file + tests/integration/cli-render-from-clip.test.ts)
 //   #3  reference-required gate                   — TESTED (tests/unit/eval-refs.test.ts)
@@ -72,11 +73,11 @@ function sourceFiles(): string[] {
   return out;
 }
 
-describe("AGENTS.md invariant #1 — no FAL_KEY / Vercel / OpenAI direct", () => {
-  // Only OPENROUTER_API_KEY + ELEVENLABS_API_KEY are valid env-var reads.
+describe("AGENTS.md invariant #1 — no FAL_KEY / Vercel direct; model calls only via connectors", () => {
+  // CODEX_HOME, OPENAI_API_KEY, GROQ_API_KEY, OPENROUTER_API_KEY, and ELEVENLABS_API_KEY are valid reads.
   // Forbidden providers may appear in doc comments stating *that they're
   // forbidden*; the test only flags actual `process.env.<X>` reads.
-  const forbidden = ["FAL_KEY", "VERCEL_KEY", "VERCEL_API_KEY", "OPENAI_API_KEY"];
+  const forbidden = ["FAL_KEY", "VERCEL_KEY", "VERCEL_API_KEY"];
 
   test("no source file reads process.env.<forbidden-provider>", () => {
     const offenders: string[] = [];
@@ -99,6 +100,33 @@ describe("AGENTS.md invariant #1 — no FAL_KEY / Vercel / OpenAI direct", () =>
       if (/https?:\/\/[a-z0-9.-]*fal\.(?:ai|run)\b/i.test(src)) {
         offenders.push(path.relative(REPO, f));
       }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  test("direct api.openai.com calls stay inside the OpenAI connector or setup verifier", () => {
+    const allowed = new Set([
+      path.join("cli", "lib", "providers", "openai.ts"),
+      path.join("cli", "commands", "setup.ts"),
+    ]);
+    const offenders: string[] = [];
+    for (const f of sourceFiles()) {
+      const src = fs.readFileSync(f, "utf8");
+      if (!/https:\/\/api\.openai\.com\b/.test(src)) continue;
+      const rel = path.relative(REPO, f);
+      if (!allowed.has(rel)) offenders.push(rel);
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  test("direct chatgpt.com Codex backend calls stay inside the Codex connector", () => {
+    const offenders: string[] = [];
+    for (const f of sourceFiles()) {
+      const txt = fs.readFileSync(f, "utf8");
+      if (!txt.includes("chatgpt.com/backend-api/codex")) continue;
+      const rel = path.relative(REPO, f).replace(/\\/g, "/");
+      const allowed = rel === "cli/lib/providers/codex.ts";
+      if (!allowed) offenders.push(rel);
     }
     expect(offenders).toEqual([]);
   });

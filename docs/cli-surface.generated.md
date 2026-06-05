@@ -155,13 +155,19 @@ Options:
   --non-interactive       Agent / CI mode: never prompt, never open a TUI, emit
                           a JSON summary (default: false)
   -y, --yes               Alias for --non-interactive (default: false)
-  --openrouter-key <key>  Set OPENROUTER_API_KEY (use `-` to read from stdin).
+  --openai-key <key>      Set OPENAI_API_KEY (use `-` to read from stdin).
                           Implies --non-interactive
+  --openrouter-key <key>  Set OPENROUTER_API_KEY for video/fallback providers
+                          (use `-` to read from stdin). Implies
+                          --non-interactive
+  --groq-key <key>        Set GROQ_API_KEY for Whisper transcription (use `-` to
+                          read from stdin). Implies --non-interactive
   --elevenlabs-key <key>  Set ELEVENLABS_API_KEY (use `-` to read from stdin).
                           Implies --non-interactive
-  --keys-from-env         Pick up OPENROUTER_API_KEY / ELEVENLABS_API_KEY from
-                          the current process env. Implies --non-interactive
-                          (default: false)
+  --keys-from-env         Pick up OPENAI_API_KEY / OPENROUTER_API_KEY /
+                          GROQ_API_KEY / ELEVENLABS_API_KEY from the current
+                          process env. Implies --non-interactive (default:
+                          false)
   --project-dir <path>    Link ralphy to this project directory before
                           configuring keys. Implies --non-interactive
   --no-verify             Skip API ping verification when saving keys
@@ -229,11 +235,9 @@ Options:
   -h, --help             display help for command
 
 Commands:
-  image [options]        Generate one image via OpenRouter (default:
-                         google/gemini-3-pro-image-preview — nano-banana-pro,
-                         multi-ref consistency, ≥4 concurrent). Pass --model
-                         openai/gpt-5.4-image-2 when label typography matters
-                         more than ref consistency.
+  image [options]        Generate one image (default provider: Codex OAuth when
+                         logged in; default model: gpt-image-2). Pass --provider
+                         openai or openrouter to force a fallback provider.
   image-batch [options]  Fan out N image gens from a directory of `*.txt` prompt
                          files (each file → one slot named by stem). Shares
                          --model / --ref / --size across the batch; respects
