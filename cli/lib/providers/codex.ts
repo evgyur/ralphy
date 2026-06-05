@@ -9,6 +9,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { logGeneration } from "../gen-log.js";
+import { loadHermesCodexAuth } from "../hermes-env.js";
 import {
   assetPath,
   protectExistingAsset,
@@ -46,7 +47,7 @@ const IMAGE_PRICE_FALLBACK = 0.15;
 
 type CodexAuth = {
   accessToken: string;
-  accountId: string;
+  accountId?: string;
   path: string;
 };
 
@@ -84,10 +85,10 @@ export function loadCodexAuth(): CodexAuth | null {
     };
     const accessToken = raw.tokens?.access_token;
     const accountId = raw.tokens?.account_id;
-    if (!accessToken || !accountId) return null;
+    if (!accessToken) return null;
     return { accessToken, accountId, path: authPath };
   } catch {
-    return null;
+    return loadHermesCodexAuth();
   }
 }
 
@@ -99,7 +100,7 @@ function requireCodexAuth(): CodexAuth {
   const auth = loadCodexAuth();
   if (auth) return auth;
   throw new TerminalProviderError(
-    `Codex OAuth is not configured. Run "codex login" and confirm ${codexAuthPath()} contains ChatGPT auth tokens.`,
+    `Codex OAuth is not configured. Run "codex login" or "hermes login --provider openai-codex" and confirm ${codexAuthPath()} or ~/.hermes/auth.json contains ChatGPT auth tokens.`,
   );
 }
 
@@ -193,7 +194,7 @@ async function codexResponses(body: Record<string, unknown>, model: string, kind
       method: "POST",
       headers: {
         Authorization: `Bearer ${auth.accessToken}`,
-        "chatgpt-account-id": auth.accountId,
+        ...(auth.accountId ? { "chatgpt-account-id": auth.accountId } : {}),
         "Content-Type": "application/json",
         Accept: "text/event-stream",
         "User-Agent": "ralphy-codex-oauth",

@@ -12,6 +12,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { loadHermesCodexAuth, loadHermesEnv } from "./hermes-env.js";
 
 export type CapabilityId =
   | "voiceover-elevenlabs"
@@ -94,6 +95,7 @@ export const CAPABILITIES: Capability[] = [
 ];
 
 export function hasCapability(id: CapabilityId): boolean {
+  loadHermesEnv();
   const cap = CAPABILITIES.find((c) => c.id === id);
   if (!cap) return false;
   if (id === "llm-codex") {
@@ -102,10 +104,11 @@ export function hasCapability(id: CapabilityId): boolean {
       const raw = JSON.parse(fs.readFileSync(authPath, "utf8")) as {
         tokens?: { access_token?: string; account_id?: string };
       };
-      return Boolean(raw.tokens?.access_token && raw.tokens?.account_id);
+      if (raw.tokens?.access_token) return true;
     } catch {
-      return false;
+      // Fall through to Hermes OAuth storage.
     }
+    return loadHermesCodexAuth() !== null;
   }
   return Boolean(process.env[cap.envVar]);
 }

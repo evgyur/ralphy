@@ -26,6 +26,7 @@ const ENV_KEYS = [
   "GROQ_API_KEY",
   "OPENROUTER_API_KEY",
   "ELEVENLABS_API_KEY",
+  "RALPHY_DISABLE_HERMES_IMPORT",
 ] as const;
 const saved: Record<string, string | undefined> = {};
 let tmp: string;
@@ -34,6 +35,7 @@ beforeEach(() => {
   for (const k of ENV_KEYS) saved[k] = process.env[k];
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ralphy-provider-codex-"));
   process.env.CODEX_HOME = path.join(tmp, "missing-codex-home");
+  process.env.RALPHY_DISABLE_HERMES_IMPORT = "1";
 });
 afterEach(() => {
   for (const k of ENV_KEYS) {

@@ -14,6 +14,7 @@
 // AND has its key set. Adding a provider = adding a file + one line here.
 
 import { raiseError } from "../errors/index.js";
+import { loadHermesEnv } from "../hermes-env.js";
 import { codexConnector } from "./codex.js";
 import { openaiConnector } from "./openai.js";
 import { groqConnector } from "./groq.js";
@@ -59,6 +60,7 @@ export function connectorsFor(cap: Capability): RalphyConnector[] {
  *   capability AND is available. If none are available, refuse and name the keys.
  */
 export function resolveConnector(cap: Capability, explicitId?: string): RalphyConnector {
+  loadHermesEnv();
   const candidates = connectorsFor(cap);
 
   if (explicitId) {
@@ -119,6 +121,7 @@ export function providerMatrix(): Array<{
   available: boolean;
   capabilities: Capability[];
 }> {
+  loadHermesEnv();
   return CONNECTORS.map((c) => ({
     id: c.id,
     label: c.label,
