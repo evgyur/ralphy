@@ -206,11 +206,12 @@ export type SidechainCompressInput = {
  * Build the filter_complex string used by `sidechainCompress`. Exported so
  * unit tests can assert label correctness without spawning ffmpeg.
  *
- * Hard-won detail (#011): internal filter labels MUST be multi-char.
- * Single-letter labels like `[v]` / `[m]` get parsed by ffmpeg's stream
- * specifier grammar before they reach the filtergraph parser, causing
- * `Stream specifier 'v' matches no streams` and exit 234. Use `[voice]`,
- * `[music]`, `[mducked]`, `[mixed]` — verified accepted by ffmpeg 7.1+.
+ * Hard-won details (#011):
+ * - internal filter labels MUST be multi-char. Single-letter labels like `[v]`
+ *   / `[m]` get parsed by ffmpeg's stream-specifier grammar before they reach
+ *   the filtergraph parser, causing exit 234.
+ * - a filter output label can be consumed only once. The voice bus is needed
+ *   both as the sidechain key and in the final amix, so split it first.
  */
 export function buildSidechainFilter(opts: {
   threshold: number;
@@ -220,18 +221,18 @@ export function buildSidechainFilter(opts: {
 }): string {
   const { threshold, ratio, mix, loudnorm: lufs } = opts;
   const chain = [
-    `[0:a]volume=${mix[0]}[voice]`,
+    `[0:a]volume=${mix[0]},asplit=2[voiceKey][voiceMix]`,
     `[1:a]volume=${mix[1]}[music]`,
-    `[music][voice]sidechaincompress=threshold=${threshold}:ratio=${ratio}:attack=10:release=250[mducked]`,
+    `[music][voiceKey]sidechaincompress=threshold=${threshold}:ratio=${ratio}:attack=10:release=250[mducked]`,
   ];
   if (typeof lufs === "number" && Number.isFinite(lufs)) {
     chain.push(
-      `[voice][mducked]amix=inputs=2:duration=longest:dropout_transition=2[premix]`,
+      `[voiceMix][mducked]amix=inputs=2:duration=longest:dropout_transition=2[premix]`,
       `[premix]loudnorm=I=${lufs}:TP=-1.5:LRA=11[mixed]`,
     );
   } else {
     chain.push(
-      `[voice][mducked]amix=inputs=2:duration=longest:dropout_transition=2[mixed]`,
+      `[voiceMix][mducked]amix=inputs=2:duration=longest:dropout_transition=2[mixed]`,
     );
   }
   return chain.join(";");

@@ -221,7 +221,7 @@ describe("user journey · ralphy new → ralphy skill install --agent claude", (
     // 0 results is the correct answer. To exercise the "happy path" with
     // templates discovered, point --cwd at the repo (matches `cd ugc-cli &&
     // ralphy template suggest ...`).
-    const suggest = ralphy(["--cwd", REPO, "--json", "template", "suggest", "ugc product reveal"]);
+    const suggest = ralphy(["--cwd", REPO, "--json", "template", "suggest", "ugc product reveal", "--no-llm"]);
     expect(suggest.exitCode).toBe(0);
     const suggestPayload = suggest.json as { results?: unknown[]; utterance?: string } | null;
     expect(suggestPayload).toBeTruthy();

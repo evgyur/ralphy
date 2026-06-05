@@ -2,7 +2,7 @@
 // (#048). Spins up a localhost HTTP fixture server and dispatches the CLI at it.
 
 import { describe, test, expect, beforeAll, afterAll, beforeEach, afterEach } from "bun:test";
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -65,19 +65,29 @@ afterAll(() => {
   return new Promise<void>((resolve) => server.close(() => resolve()));
 });
 
-function ralphy(args: string[]): { exitCode: number; stdout: string; stderr: string; json: any } {
-  const r = spawnSync("bun", [CLI, "--cwd", tmpRoot, ...args], {
-    cwd: tmpRoot,
-    encoding: "utf8",
-    env: { ...process.env },
+function ralphy(args: string[]): Promise<{ exitCode: number; stdout: string; stderr: string; json: any }> {
+  return new Promise((resolve) => {
+    const child = spawn("bun", [CLI, "--cwd", tmpRoot, ...args], {
+      cwd: tmpRoot,
+      env: { ...process.env },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", (chunk) => { stdout += chunk; });
+    child.stderr.on("data", (chunk) => { stderr += chunk; });
+    child.on("close", (code) => {
+      let json: any = null;
+      try {
+        json = JSON.parse(stdout);
+      } catch {
+        /* not json */
+      }
+      resolve({ exitCode: code ?? -1, stdout, stderr, json });
+    });
   });
-  let json: any = null;
-  try {
-    json = JSON.parse(r.stdout);
-  } catch {
-    /* not json */
-  }
-  return { exitCode: r.status ?? -1, stdout: r.stdout, stderr: r.stderr, json };
 }
 
 beforeEach(() => {
@@ -115,7 +125,7 @@ afterEach(() => {
 });
 
 describe("`ralphy ref pull --from-file --kind reference-image` (#048)", () => {
-  test("downloads every URL into <project>/refs/ with domain-prefixed names", () => {
+  test("downloads every URL into <project>/refs/ with domain-prefixed names", async () => {
     const urlsFile = path.join(tmpRoot, "urls.txt");
     fs.writeFileSync(
       urlsFile,
@@ -127,7 +137,7 @@ describe("`ralphy ref pull --from-file --kind reference-image` (#048)", () => {
       ].join("\n"),
     );
 
-    const r = ralphy([
+    const r = await ralphy([
       "ref",
       "pull",
       "--from-file",
@@ -153,8 +163,8 @@ describe("`ralphy ref pull --from-file --kind reference-image` (#048)", () => {
     expect(files).toContain("127.0.0.1-bar.jpg");
   });
 
-  test("dedupes by sha256 within a single batch", () => {
-    const r = ralphy([
+  test("dedupes by sha256 within a single batch", async () => {
+    const r = await ralphy([
       "ref",
       "pull",
       `http://127.0.0.1:${port}/a/b/foo.png`,
@@ -174,10 +184,10 @@ describe("`ralphy ref pull --from-file --kind reference-image` (#048)", () => {
     expect(files.length).toBe(1);
   });
 
-  test("idempotent: re-running on the same URL is a skipped-existing no-op", () => {
+  test("idempotent: re-running on the same URL is a skipped-existing no-op", async () => {
     const url = `http://127.0.0.1:${port}/a/b/foo.png`;
-    ralphy(["ref", "pull", url, "--kind", "reference-image", "--project", "test-bulk-001"]);
-    const r2 = ralphy(["ref", "pull", url, "--kind", "reference-image", "--project", "test-bulk-001"]);
+    await ralphy(["ref", "pull", url, "--kind", "reference-image", "--project", "test-bulk-001"]);
+    const r2 = await ralphy(["ref", "pull", url, "--kind", "reference-image", "--project", "test-bulk-001"]);
     expect(r2.exitCode).toBe(0);
     expect(r2.json.downloaded).toBe(0);
     expect(r2.json.skipped).toBe(1);
@@ -185,8 +195,8 @@ describe("`ralphy ref pull --from-file --kind reference-image` (#048)", () => {
     expect(fs.readdirSync(refsDir).length).toBe(1);
   });
 
-  test("appends gen-log rows with provider='http' + cost_usd=0", () => {
-    ralphy([
+  test("appends gen-log rows with provider='http' + cost_usd=0", async () => {
+    await ralphy([
       "ref",
       "pull",
       `http://127.0.0.1:${port}/a/b/foo.png`,
@@ -214,8 +224,8 @@ describe("`ralphy ref pull --from-file --kind reference-image` (#048)", () => {
     expect(last.input.project).toBe("test-bulk-001");
   });
 
-  test("infers extension from content-type when URL has no extension", () => {
-    const r = ralphy([
+  test("infers extension from content-type when URL has no extension", async () => {
+    const r = await ralphy([
       "ref",
       "pull",
       `http://127.0.0.1:${port}/no-ext-but-typed`,
@@ -230,8 +240,8 @@ describe("`ralphy ref pull --from-file --kind reference-image` (#048)", () => {
     expect(files.some((f) => f.endsWith(".png"))).toBe(true);
   });
 
-  test("missing --project raises E_INPUT_INVALID", () => {
-    const r = ralphy([
+  test("missing --project raises E_INPUT_INVALID", async () => {
+    const r = await ralphy([
       "ref",
       "pull",
       `http://127.0.0.1:${port}/a/b/foo.png`,
